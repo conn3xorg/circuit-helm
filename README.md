@@ -10,7 +10,7 @@ Only the binary:
 
 ```hcl
 module "helm" {
-  source = "github.com/conn3xorg/circuit-helm?ref=v0.1.0"
+  source = "github.com/conn3xorg/circuit-helm?ref=v0.1.1"
 
   hosts                = { web1 = "203.0.113.10" }
   ssh_private_key_file = "~/.ssh/id_ed25519"
@@ -29,7 +29,7 @@ module "k3s" {
 }
 
 module "helm" {
-  source     = "github.com/conn3xorg/circuit-helm?ref=v0.1.0"
+  source     = "github.com/conn3xorg/circuit-helm?ref=v0.1.1"
   depends_on = [module.k3s]
 
   hosts                = { cp1 = "203.0.113.10" }
