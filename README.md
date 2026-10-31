@@ -137,6 +137,21 @@ While the cluster is down, a plan can't read Helm's revision and shows the relea
 
 Set `helm_version` and `checksums` together. Take each checksum from `https://get.helm.sh/helm-VERSION-linux-ARCH.tar.gz.sha256sum`.
 
+### Kustomize
+
+You don't need a separate circuit for kustomize. k3s's `kubectl` has it built in, so one `command` step applies an overlay that's already on the host, and does nothing when the cluster matches it:
+
+```hcl
+step "overlay" {
+  command {
+    command = "k3s kubectl apply -k /srv/overlays/prod"
+    unless  = "k3s kubectl diff -k /srv/overlays/prod"
+  }
+}
+```
+
+We ran those two commands by hand on k3s v1.37.1, whose `kubectl` embeds kustomize v5.8.1, but not as a Conn3x step. `kubectl diff` exits 1 when the overlay has changed and 0 once it's applied. A standalone binary only adds `kustomize edit`, `cfg` and `fn`.
+
 ## Inputs
 
 | Name | Type | Default | Description |
