@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Conn3x
+        env: &gh
+          GH_TOKEN: ${{ github.token }}
+        run: &install |
+          tag=$(gh release view -R conn3xorg/conn3x --json tagName -q .tagName)
+          file="conn3x_${tag#v}_linux_amd64.tar.gz"
+          cd "$RUNNER_TEMP"
+          curl -sSfLO "https://github.com/conn3xorg/conn3x/releases/download/$tag/$file"
+          curl -sSfLO "https://github.com/conn3xorg/conn3x/releases/download/$tag/checksums.txt"
+          grep " $file\$" checksums.txt | sha256sum -c -
+          mkdir -p bin && tar -xzf "$file" -C bin conn3x
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: conn3x version
+      - run: conn3x fmt -check -recursive
+      - name: Validate
+        run: conn3x init -backend=false && conn3x validate
+      - name: Validate the example
+        working-directory: examples/local
+        run: conn3x init -backend=false && conn3x validate
+
+  e2e:
+    needs: validate
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [rocky10, fedora45, ubuntu2404, debian13]
+    name: e2e (${{ matrix.distro }})
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The test host images live in the Conn3x repo.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: conn3xorg/conn3x
+          ref: main
+          path: conn3x
+          persist-credentials: false
+          sparse-checkout: test/images
+      - name: Install Conn3x
+        env: *gh
+        run: *install
+      # A container can't load kernel modules, so the runner loads k3s's.
+      - run: sudo modprobe -a br_netfilter overlay
+      - name: Start the ${{ matrix.distro }} host
+        working-directory: examples/local
+        env:
+          CONTAINERFILE: ${{ github.workspace }}/conn3x/test/images/${{ matrix.distro }}/Containerfile
+          # Rootless Podman doesn't hand containers the cpuset cgroup k3s needs.
+          PODMAN: sudo podman
+        run: ./up.sh
+      - name: Apply, then plan again with no changes
+        working-directory: examples/local
+        run: |
+          conn3x init
+          conn3x apply -auto-approve -var 'values=ui: { message: first }'
+          conn3x plan -detailed-exitcode -var 'values=ui: { message: first }'
+      - name: Check the chart deployed the first value
+        working-directory: examples/local
+        run: sudo podman exec -i circuit-helm sh -s first < check.sh
+      - name: Change the value, see the change, plan again with no changes
+        working-directory: examples/local
+        run: |
+          conn3x apply -auto-approve -var 'values=ui: { message: second }'
+          sudo podman exec -i circuit-helm sh -s second < check.sh
+          conn3x plan -detailed-exitcode -var 'values=ui: { message: second }'
+      - name: Check the secret values file stayed out of state
+        working-directory: examples/local
+        run: |
+          sudo podman exec circuit-helm grep -q example-secret-change-me /etc/podinfo-secret-values.yaml
+          ! grep -q example-secret-change-me terraform.tfstate
+      - name: Check a value that looks like a secret is refused
+        working-directory: examples/local
+        run: |
+          ! conn3x plan -no-color -var 'values=adminPassword: hunter2' > refused.log 2>&1
+          grep -q 'looks like a secret' refused.log
+      - name: Show what's running
+        if: failure()
+        run: sudo podman exec circuit-helm sh -c 'k3s kubectl get pods -A; cat /var/lib/conn3x-helm/podinfo/helm.log; journalctl -u k3s --no-pager -n 100' || true
+      - name: Clean up
+        if: always()
+        working-directory: examples/local
+        env:
+          PODMAN: sudo podman
+        run: ./down.sh
