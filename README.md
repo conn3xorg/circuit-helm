@@ -10,7 +10,7 @@ Only the binary:
 
 ```hcl
 module "helm" {
-  source = "github.com/conn3xorg/circuit-helm?ref=v0.1.0"
+  source = "github.com/conn3xorg/circuit-helm?ref=v0.1.1"
 
   hosts                = { web1 = "203.0.113.10" }
   ssh_private_key_file = "~/.ssh/id_ed25519"
@@ -21,7 +21,7 @@ With a release, on a cluster built by [circuit-k3s](https://github.com/conn3xorg
 
 ```hcl
 module "k3s" {
-  source = "github.com/conn3xorg/circuit-k3s?ref=v0.1.3"
+  source = "github.com/conn3xorg/circuit-k3s?ref=v0.1.4"
 
   servers              = { cp1 = "203.0.113.10" }
   token                = var.k3s_token
@@ -29,7 +29,7 @@ module "k3s" {
 }
 
 module "helm" {
-  source     = "github.com/conn3xorg/circuit-helm?ref=v0.1.0"
+  source     = "github.com/conn3xorg/circuit-helm?ref=v0.1.1"
   depends_on = [module.k3s]
 
   hosts                = { cp1 = "203.0.113.10" }
@@ -113,7 +113,7 @@ On every host in `hosts`:
 
 If you've listed releases, on one host (`release_host`, or the first name in sorted order):
 
-3. On a k3s server, waits for k3s to settle. k3s can exit just after creating its Helm CRDs, which leaves them never established, and then it exits a minute into every start after that. If that has happened, this deletes the two CRDs and k3s creates them again. Nothing can be stored in them until they're established, so nothing is lost.
+3. On a k3s server, waits for every CRD to be established. If one stays stuck, the apply fails and points to [Troubleshooting](https://github.com/conn3xorg/circuit-k3s#troubleshooting) in circuit-k3s. It never deletes a CRD.
 4. Pulls each chart to `/var/lib/conn3x-helm/RELEASE/VERSION`, checking `sha256` if you gave one before the file lands there.
 5. Writes `values` to `/var/lib/conn3x-helm/RELEASE/values.yaml`, mode `0600`.
 6. Runs `helm upgrade --install --wait`, with up to 15 minutes for the release to become ready.
@@ -189,7 +189,7 @@ Each release takes:
 
 ## Requirements
 
-Requires Conn3x v0.6.10 or later, and outbound HTTPS to `get.helm.sh` and your chart repositories. Releases need a Kubernetes cluster and a kubeconfig on the release host. Helm doesn't need it to be k3s, but every release test here ran on k3s.
+Requires Conn3x v0.6.10 or later, circuit-k3s v0.1.4 or later if that's what built your cluster, and outbound HTTPS to `get.helm.sh` and your chart repositories. Releases need a Kubernetes cluster and a kubeconfig on the release host. Helm doesn't need it to be k3s, but every release test here ran on k3s.
 
 ## Tested on
 
@@ -197,7 +197,7 @@ Rocky Linux 10, Fedora 45, Ubuntu 24.04 and Debian 13. CI applies [examples/loca
 
 The rest was run by hand on 2 vCPU, 4 GB droplets with one node each: Ubuntu 24.04, and Rocky Linux 10. On both, the value change showed in the pods, the secret wasn't in state, and after a reboot the plan had no changes and the pods still gave the right answer.
 
-The step that recovers k3s's stuck CRDs was added after the droplet runs, and the containers re-ran with it. Its recovery path hasn't been seen firing in a run with Helm. Deleting the CRDs by hand cleared the same state on a droplet.
+v0.1.0 deleted k3s's Helm CRDs when they weren't established after about three minutes. On a cluster that was only slow, that would have deleted every HelmChart in it, so upgrade from v0.1.0. v0.1.1 only waits. CI runs it with circuit-k3s v0.1.4; the droplet runs above were on v0.1.0.
 
 Not run: Helm 3, a cluster that isn't k3s, more than one host, a real secret chart such as Grafana (the example above is a sketch of the route that podinfo tested), arm64 on a real host.
 

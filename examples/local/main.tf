@@ -21,7 +21,7 @@ variable "secret" {
 }
 
 module "k3s" {
-  source = "github.com/conn3xorg/circuit-k3s?ref=v0.1.3"
+  source = "github.com/conn3xorg/circuit-k3s?ref=v0.1.4"
 
   servers              = { server1 = "127.0.0.1" }
   token                = var.token
