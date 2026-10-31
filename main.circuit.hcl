@@ -20,7 +20,7 @@ locals {
   helm = "/usr/local/bin/helm --kubeconfig ${var.kubeconfig}"
 
   wait_api = "for _ in $(seq 60); do k3s kubectl get --raw=/readyz >/dev/null 2>&1 && break; sleep 5; done"
-  crds_up  = "for _ in $(seq 36); do k3s kubectl wait --for=condition=Established crd/helmcharts.helm.cattle.io crd/helmchartconfigs.helm.cattle.io --timeout=5s >/dev/null 2>&1 && exit 0; sleep 5; done; exit 1"
+  crds_up  = "for _ in $(seq 36); do s=$(k3s kubectl get crd -o jsonpath='{range .items[*]}{.status.conditions[?(@.type==\"Established\")].status}{\"\\n\"}{end}' 2>/dev/null) && ! echo \"$s\" | grep -qv True && exit 0; sleep 5; done; exit 1"
 
   # Releases belong to a cluster, not a host, so one host runs them.
   release_host = length(var.releases) > 0 ? { for k in [coalesce(var.release_host, sort(keys(var.hosts))[0])] : k => var.hosts[k] } : {}
@@ -85,15 +85,14 @@ circuit "helm_releases" {
     become           = var.ssh_become
   }
 
-  # k3s can exit just after creating these CRDs, which leaves them never
-  # established. It then exits a minute into every later start, failing whatever
-  # Helm is doing, and restarting doesn't help. Nothing can be stored in a CRD
-  # that isn't established, so deleting them loses nothing, and k3s creates them
-  # again. Other clusters have no k3s command and skip this.
+  # A CRD stuck at Established=False makes k3s exit a minute into every start,
+  # failing whatever Helm is doing, so stop with a pointer instead. Never delete
+  # them here: on a cluster that's only slow, that would lose every HelmChart.
+  # Other clusters have no k3s command and skip this.
   step "k3s_settled" {
     depends_on = [conn3x_link.helm__link]
     command {
-      command = "command -v k3s >/dev/null || exit 0; ${local.wait_api}; ( ${local.crds_up} ) || { for _ in $(seq 24); do k3s kubectl delete crd helmcharts.helm.cattle.io helmchartconfigs.helm.cattle.io --ignore-not-found --timeout=20s >/dev/null 2>&1 && break; sleep 5; done; ${local.wait_api}; ${local.crds_up}; }"
+      command = "command -v k3s >/dev/null || exit 0; ${local.wait_api}; ( ${local.crds_up} ) || { echo 'k3s CRDs did not become Established. See Troubleshooting in the circuit-k3s README: https://github.com/conn3xorg/circuit-k3s#troubleshooting' >&2; exit 1; }"
     }
   }
 
