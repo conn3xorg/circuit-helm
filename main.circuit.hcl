@@ -102,8 +102,8 @@ circuit "helm_releases" {
   step "chart" {
     for_each = var.releases
     command {
-      command = "t=$(mktemp -d) && trap 'rm -rf \"$t\"' EXIT && /usr/local/bin/helm pull ${item.value.chart} ${item.value.repository == null ? "" : "--repo ${item.value.repository}"} --version ${item.value.version} -d \"$t\" && ${item.value.sha256 == null ? "true" : "echo \"${item.value.sha256}  $(ls \"$t\"/*.tgz)\" | sha256sum -c - >/dev/null"} && mkdir -p -m 0700 ${local.dir}/${item.key}/${item.value.version} && mv \"$t\"/*.tgz ${local.dir}/${item.key}/${item.value.version}/"
-      unless  = item.value.sha256 == null ? "ls ${local.dir}/${item.key}/${item.value.version}/*.tgz" : "echo \"${item.value.sha256}  $(ls ${local.dir}/${item.key}/${item.value.version}/*.tgz)\" | sha256sum -c -"
+      command = "t=$(mktemp -d) && trap 'rm -rf \"$t\"' EXIT && /usr/local/bin/helm pull ${item.value.chart} ${item.value.repository == null ? "" : "--repo ${item.value.repository}"} --version ${item.value.version} -d \"$t\" && echo \"${item.value.sha256}  $(ls \"$t\"/*.tgz)\" | sha256sum -c - >/dev/null && mkdir -p -m 0700 ${local.dir}/${item.key}/${item.value.version} && mv \"$t\"/*.tgz ${local.dir}/${item.key}/${item.value.version}/"
+      unless  = "echo \"${item.value.sha256}  $(ls ${local.dir}/${item.key}/${item.value.version}/*.tgz)\" | sha256sum -c -"
     }
   }
 

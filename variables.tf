@@ -28,7 +28,7 @@ variable "releases" {
     chart        = string
     repository   = optional(string)
     version      = string
-    sha256       = optional(string)
+    sha256       = string
     namespace    = optional(string, "default")
     values       = optional(string, "{}")
     values_files = optional(list(string), [])
@@ -57,7 +57,7 @@ variable "releases" {
   }
 
   validation {
-    condition     = alltrue([for r in var.releases : r.sha256 == null || can(regex("^[0-9a-f]{64}$", coalesce(r.sha256, "-")))])
+    condition     = alltrue([for r in var.releases : can(regex("^[0-9a-f]{64}$", coalesce(r.sha256, "-")))])
     error_message = "sha256 is 64 lowercase hex digits."
   }
 

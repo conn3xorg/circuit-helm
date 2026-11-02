@@ -96,6 +96,8 @@ jobs:
       - name: Show what's running
         if: failure()
         run: sudo podman exec circuit-helm sh -c 'k3s kubectl get pods -A; cat /var/lib/conn3x-helm/podinfo/helm.log; journalctl -u k3s --no-pager -n 100' || true
+      - name: Check a release must name a chart checksum
+        run: grep -q "sha256 *= string" variables.tf
       - name: Clean up
         if: always()
         working-directory: examples/local

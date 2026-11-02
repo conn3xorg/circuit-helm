@@ -114,7 +114,7 @@ On every host in `hosts`:
 If you've listed releases, on one host (`release_host`, or the first name in sorted order):
 
 3. On a k3s server, waits for every CRD to be established. If one stays stuck, the apply fails and points to [Troubleshooting](https://github.com/conn3xorg/circuit-k3s#troubleshooting) in circuit-k3s. It never deletes a CRD.
-4. Pulls each chart to `/var/lib/conn3x-helm/RELEASE/VERSION`, checking `sha256` if you gave one before the file lands there.
+4. Pulls each chart to `/var/lib/conn3x-helm/RELEASE/VERSION`, checking `sha256` before the file lands there.
 5. Writes `values` to `/var/lib/conn3x-helm/RELEASE/values.yaml`, mode `0600`.
 6. Runs `helm upgrade --install --wait`, with up to 15 minutes for the release to become ready.
 
@@ -175,7 +175,7 @@ Each release takes:
 | `chart` | string | Required | Chart name in `repository`, or an `oci://` reference. |
 | `repository` | string | `null` | Chart repository, an `https://` URL with no credentials. |
 | `version` | string | Required | One exact chart version. Ranges are refused. |
-| `sha256` | string | `null` | SHA-256 of the chart's `.tgz`. Worth setting: a repository can publish new bytes under an old version. |
+| `sha256` | string | Required | SHA-256 of the chart's `.tgz`, since a repository can publish new bytes under an old version. |
 | `namespace` | string | `"default"` | Namespace, created if it's missing. |
 | `values` | string | `"{}"` | YAML, usually from `yamlencode`. Reaches state, so secrets are refused here. |
 | `values_files` | list(string) | `[]` | Absolute paths of values files already on the host, applied after `values`. |
