@@ -91,7 +91,7 @@ jobs:
       - name: Check a value that looks like a secret is refused
         working-directory: examples/local
         run: |
-          ! conn3x plan -no-color -var 'values=adminPassword: hunter2' > refused.log 2>&1
+          if conn3x plan -no-color -var 'values=adminPassword: hunter2' > refused.log 2>&1; then echo "plan should have refused" >&2; exit 1; fi
           grep -q 'looks like a secret' refused.log
       - name: Show what's running
         if: failure()
