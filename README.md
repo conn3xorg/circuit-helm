@@ -191,7 +191,7 @@ Each release takes:
 
 ## Requirements
 
-Requires Conn3x v0.6.10 or later, circuit-k3s v0.1.4 or later if that's what built your cluster, and outbound HTTPS to `get.helm.sh` and your chart repositories. Releases need a Kubernetes cluster and a kubeconfig on the release host. Helm doesn't need it to be k3s, but every release test here ran on k3s.
+Requires Conn3x v0.7.1 or later, circuit-k3s v0.1.4 or later if that's what built your cluster, and outbound HTTPS to `get.helm.sh` and your chart repositories. Releases need a Kubernetes cluster and a kubeconfig on the release host. Helm doesn't need it to be k3s, but every release test here ran on k3s.
 
 ## Tested on
 
