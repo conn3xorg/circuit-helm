@@ -170,9 +170,11 @@ We ran those two commands by hand on k3s v1.37.1, whose `kubectl` embeds kustomi
 | `ssh_known_hosts_file` | string | `null` | known_hosts file to check host keys against. When null, `~/.ssh/known_hosts`. |
 | `ssh_become` | bool | `false` | Run commands as root through sudo. Set it when `ssh_user` isn't root. |
 
-Each release takes:
+### releases
 
-| Name | Type | Default | Description |
+Each entry's key is the release name. Each release takes:
+
+| Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `chart` | string | Required | Chart name in `repository`, or an `oci://` reference. |
 | `repository` | string | `null` | Chart repository, an `https://` URL with no credentials. |
