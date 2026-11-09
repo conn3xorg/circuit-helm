@@ -91,6 +91,7 @@ circuit "helm_releases" {
   # Other clusters have no k3s command and skip this.
   step "k3s_settled" {
     depends_on = [conn3x_link.helm__link]
+    # conn3x-lint:ignore C3X101 a gate before Helm installs anything, not state to keep; the releases' own steps are checked on every plan
     command {
       command = "command -v k3s >/dev/null || exit 0; ${local.wait_api}; ( ${local.crds_up} ) || { echo 'k3s CRDs did not become Established. See Troubleshooting in the circuit-k3s README: https://github.com/conn3xorg/circuit-k3s#troubleshooting' >&2; exit 1; }"
     }
